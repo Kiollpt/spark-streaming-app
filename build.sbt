@@ -1,10 +1,12 @@
+import sbt.util
+
 name := "TaxiApp"
 
 version := "0.1"
 
 scalaVersion := "2.12.7"
 
-
+logLevel := util.Level.Info
 
 val sparkVersion =  "2.4.3"
 

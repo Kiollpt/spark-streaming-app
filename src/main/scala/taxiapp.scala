@@ -2,54 +2,60 @@ import java.sql.Timestamp
 
 import com.google.gson.Gson
 import org.apache.spark.sql.functions._
-import org.apache.spark.sql.{Encoders, ForeachWriter, Row, SparkSession}
-import org.apache.spark.sql.{DataFrame,Dataset}
+import org.apache.spark.sql.{
+  DataFrame,
+  Encoders,
+  ForeachWriter,
+  Row,
+  SparkSession
+}
 
-case class order(`zone`:String,choroplethData:String,datetime:Timestamp,event:String)
-case class result(`zone`:String,choroplethData:String,sup_dem_ratio:Double)
-
-
+case class order(
+    zone: String,
+    choroplethData: String,
+    datetime: Timestamp,
+    event: String
+)
+case class result(zone: String, choroplethData: String, sup_dem_ratio: Double)
 
 object taxiapp {
 
   def main(args: Array[String]): Unit = {
 
-      val filePath = "src/resource"
-      val ss = SparkSession.builder().master("local[1]").appName("taxi-app").getOrCreate()
-      //ss.conf.set("spark.sql.streaming.schemaInference","true")
-      ss.sparkContext.setLogLevel("WARN")
+    val filePath = "src/resource/sample-data"
+    val ss = SparkSession
+      .builder()
+      .master("local[1]")
+      .appName("taxi-app")
+      .getOrCreate()
+    //ss.conf.set("spark.sql.streaming.schemaInference","true")
+    ss.sparkContext.setLogLevel("WARN")
 
-      import ss.implicits._
+    import ss.implicits._
 
-      val schema = Encoders.product[order].schema
-      val df = ss.readStream.option("header","true").schema(schema).csv(filePath)
+    val schema = Encoders.product[order].schema
+    val df = ss.readStream.option("header", "true").schema(schema).csv(filePath)
 
-      println(df.isStreaming)
-
+    println(df.isStreaming)
 
     val enrichedStreamingDf = richDataFrame(df)
 
+    val ratioDF = ratioDataFrame(enrichedStreamingDf)
 
+    val ratioDf1 = ratioDF
+      .withColumn("choroplethData", substring($"choroplethData", 1, 3))
+      .filter(col("zone") === "Queensbridge/Ravenswood")
 
-    val ratioDf = enrichedStreamingDf
-      .withWatermark("datetime", "10 minutes")
-      .groupBy(
-        window($"datetime", "10 minutes", "5 minutes"),
-        $"zone",
-        $"choroplethData"
-
-      )
-      .agg((sum($"supply") / sum($"demand")).as("sup_dem_ratio"))
-
-    val d = ratioDf.writeStream.outputMode("update").format("console").start()
-
-      d.awaitTermination()
-
+    ratioDf1.writeStream
+      .outputMode("append")
+      .format("console")
+      .option("truncate", "false")
+      .start()
+      .awaitTermination()
 
     //
-//      ratioDf.writeStream.outputMode("update").foreach(
+//      ratioDF.writeStream.outputMode("update").foreach(
 //              new ForeachWriter[Row] {
-//
 //
 //              def open(partitionId: Long, version: Long): Boolean = {
 //                  true
@@ -77,25 +83,36 @@ object taxiapp {
 //              }
 //            }).start().awaitTermination()
 
-
   }
 
-  def richDataFrame(df:DataFrame): DataFrame= {
+  def richDataFrame(df: DataFrame): DataFrame = {
 
-
-    val df1 = df.withColumn("demand",
+    df.withColumn(
+      "demand",
       when(col("event") === "PICKUP", lit(1))
         .when(col("event") === "DROPOFF", lit(0))
-        .otherwise(lit(0)))
-      .withColumn("supply",
-        when(col("event") === "PICKUP", lit(1))
-          .when(col("event") === "DROPOFF", lit(1))
-          .otherwise(lit(0)))
-    df1
+        .otherwise(lit(0))
+    ).withColumn(
+      "supply",
+      when(col("event") === "PICKUP", lit(1))
+        .when(col("event") === "DROPOFF", lit(1))
+        .otherwise(lit(0))
+    )
 
   }
+  def ratioDataFrame(df: DataFrame): DataFrame = {
 
+    df.withWatermark("datetime", "10 minutes")
+      .groupBy(
+        window(col("datetime"), "10 minutes", "5 minutes"),
+        col("zone"),
+        col("choroplethData")
+      )
+      .agg(
+        (sum(col("supply")) / sum(col("demand")))
+          .as("sup_dem_ratio")
+      )
 
-
+  }
 
 }
