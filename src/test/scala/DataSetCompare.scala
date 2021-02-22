@@ -6,35 +6,31 @@ import scala.util.control.Exception
 
 trait DataSetCompare {
 
+  def schemaCheck(s1: StructType, s2: StructType): Boolean = {
 
-  def schemaCheck(s1: StructType, s2: StructType): Boolean ={
-
-    if (s1.length != s2.length){
+    if (s1.length != s2.length) {
       false
     } else {
-      val fields: Seq[(StructField,StructField)] = s1.zip(s2)
+      val fields: Seq[(StructField, StructField)] = s1.zip(s2)
 
-      fields.forall(t=> (t._1.dataType == t._2.dataType))
-
+      fields.forall(t => t._1.dataType == t._2.dataType)
 
     }
 
-
-
   }
 
+  def assertDataSet[T](actualDS: Dataset[T], expectedDS: Dataset[T]): Unit = {
 
-  def assertDataSet[T](actualDS: Dataset[T],
-                       expectedDS: Dataset[T]): Unit ={
-
-
-    if (!schemaCheck(actualDS.schema,expectedDS.schema)){ throw new Exception("the schema are not matched")}
+    if (!schemaCheck(actualDS.schema, expectedDS.schema)) {
+      throw new Exception("the schema are not matched")
+    }
 
     val actual = actualDS.collect()
     val expected = expectedDS.collect()
 
-    if (!actual.sameElements(expected)){throw new Exception("the data are not matched")}
-
+    if (!actual.sameElements(expected)) {
+      throw new Exception("the data are not matched")
+    }
 
   }
 
