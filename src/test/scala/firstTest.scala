@@ -15,6 +15,8 @@ class firstTest extends AnyFunSuite with DataSetCompare {
     .appName("test")
     .getOrCreate()
 
+  spark.sparkContext.setLogLevel("WARN")
+
   import spark.implicits._
   implicit val sqlCtx: SQLContext = spark.sqlContext
 
@@ -24,7 +26,7 @@ class firstTest extends AnyFunSuite with DataSetCompare {
 
     val testDF = kafkaData.toDF()
 
-    val result = richDataFrame(testDF).writeStream
+    val query = richDataFrame(testDF).writeStream
       .format("memory")
       .queryName("rich_table")
       .outputMode("append")
@@ -32,12 +34,14 @@ class firstTest extends AnyFunSuite with DataSetCompare {
     val data1 = Seq(Event("PICKUP"), Event("DROPOFF"))
 
     kafkaData.addData(data1)
-    result.processAllAvailable()
+    query.processAllAvailable()
 
     val expected = List(Row(1, 1), Row(0, 1))
 
     val collect = spark.sql("select demand, supply from rich_table").collect()
     assert(expected == collect.toList)
+
+    query.stop()
 
   }
 
@@ -51,7 +55,7 @@ class firstTest extends AnyFunSuite with DataSetCompare {
       .select(from_json($"value".cast("string"), testSchema) as "record")
       .select("record.*")
 
-    val result = ratioDataFrame(richDataFrame(testDF)).writeStream
+    val query = ratioDataFrame(richDataFrame(testDF)).writeStream
       .format("memory")
       .queryName("streaming")
       .outputMode("append")
@@ -65,10 +69,13 @@ class firstTest extends AnyFunSuite with DataSetCompare {
     val data = df.collect()
 
     kafkaData.addData(data)
-    result.processAllAvailable()
+    query.processAllAvailable()
 
-    val collect = spark.sql("select * from streaming")
-    collect.show()
+    val q = spark.sql("select COUNT(*) from streaming").collect()
+    val totalCount = q(0).getLong(0)
+
+    assert(totalCount == 23)
+    query.stop()
 
   }
 
