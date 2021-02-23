@@ -1,8 +1,5 @@
-import taxiapp.richDataFrame
 import org.apache.spark.sql.Dataset
 import org.apache.spark.sql.types.{StructField, StructType}
-
-import scala.util.control.Exception
 
 trait DataSetCompare {
 
