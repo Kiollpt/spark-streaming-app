@@ -1,5 +1,5 @@
 
-![demo](https://media.giphy.com/media/vSDDBoWq8Mlby75bL9/giphy.gif)
+<img src="./img/taxi_app_demo.gif" height=auto>
 
 ## TODO
 * [x] Spark app for batch
