@@ -1,56 +1,39 @@
 
+
+## Spark Streaming Application 
+Monitor the N.Y. taxi supply/demand (S/D) ratio in real time.
+
+
+## DEMO
 <img src="./img/taxi_app_demo.gif" height=auto>
 
-## TODO
-* [x] Spark app for batch
-* [] Kibana displays street level
-* [] Handle HDFS if samll size
-* [] Optimize code
-* [x] Use scala spark
+
+## Pipeline
+<img src="./img/pipeline.png" height=auto>
+
+   **TL;DR** 
+   
+   First read the raw date from Kafka (Mock by MemoryStream). 
+   We project out `Taxi` data by schema. Then we apply the `withSupplyDemand()`.
+   Next, We run the aggregation onto the returned DataFrame by the sliding window.
+   Lastly, We will call Flask API with the aggregated result.
+
+## Testing
+run `sbt test`
+
+1. rich test
+
+    Test the `withSupplyDemand()` transformation that projects two "supply" and "drop" columns by the assumption
+    if it works as expected.
+
+2. End-End streaming test 
+    
+   Test the count after aggregating if is equal to our expected count
 
 
-## Requirement
-* Kafka (Host on AWS EC2)
-* AWS EMR (Run Spark-2.4.3 application and use HDFS)
-* ElasticSearch (EC2)
-    - or you could use [Bonsai](https://bonsai.io) instead
+            
 
-## System Architecture
-<img src="./img/flowchart.png" height=auto>
 
-## Prepare Data
-* Get open source data from the website below
-
-```bash
-wget https://www1.nyc.gov/site/tlc/about/tlc-trip-record-data.page
-```
-
-```bash
-python prepare.py
-```
-## Producer
-* We will send message to our kafka server
-
-```bash
-python producer.py
-```
-
-## Spark Stream
-
-* Steps
-
-* Deploy to EMR
-  1. Download Kafka + Spark Streaming JAR of Maven `spark-streaming-kafka-0-8-assembly_2.11-2.4.3.jar`
-
-  2. packing your dependencies
-  use pipenv to pack and generate ZIP file
-  [ref](https://realpython.com/pipenv-guide/)
-
-  3. EMR Add steps to run streaming App in the cluser
-
-    ```bash
-    spark-submit --jars s3://emr-harry/spark-streaming-kafka-0-8-assembly_2.11-2.4.3.jar --master yarn --deploy-mode cluster --num-executors 3 --executor-cores 3 --executor-memory 3g --py-files s3://emr-harry/project.zip s3://emr-harry/taxiSparkStreaming.py
-    ```
 
 
 
